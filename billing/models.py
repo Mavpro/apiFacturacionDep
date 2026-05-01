@@ -15,6 +15,7 @@ class Customer(TimestampedModel):
     email = models.EmailField('Correo electrónico', unique=True)
     document_number = models.CharField('Número de documento (RUT/DNI)', max_length=50, unique=True)
     address = models.TextField('Dirección', blank=True, null=True)
+    is_active = models.BooleanField('Activo', default=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

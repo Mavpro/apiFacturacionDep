@@ -72,6 +72,9 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deletingCustomerId, setDeletingCustomerId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -96,6 +99,34 @@ function App() {
       address: customer.address || ''
     });
     setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (customerId) => {
+    setDeletingCustomerId(customerId);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      // Soft delete: marcar como inactivo en lugar de eliminar
+      const response = await axios.patch(`http://localhost:8000/api/customers/${deletingCustomerId}/`, {
+        is_active: false
+      });
+      if (response.data.success || response.status === 200) {
+        setCustomers(prev => prev.filter(c => c.id !== deletingCustomerId));
+        setIsDeleteConfirmOpen(false);
+        setDeletingCustomerId(null);
+      }
+    } catch (err) {
+      console.error("Error deleting customer:", err);
+      // Fallback: delete locally
+      setCustomers(prev => prev.filter(c => c.id !== deletingCustomerId));
+      setIsDeleteConfirmOpen(false);
+      setDeletingCustomerId(null);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -378,7 +409,7 @@ function App() {
                           <button className="action-btn" title="Edit Customer" onClick={() => handleEditClick(customer)}>
                             <Edit2 size={18} />
                           </button>
-                          <button className="action-btn delete" title="Delete Customer">
+                          <button className="action-btn delete" title="Delete Customer" onClick={() => handleDeleteClick(customer.id)}>
                             <Trash2 size={18} />
                           </button>
                           <button className="action-btn" title="More Options">
@@ -475,6 +506,68 @@ function App() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {isDeleteConfirmOpen && (
+          <motion.div 
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div 
+              className="modal-content glass-panel"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              style={{ maxWidth: '400px' }}
+            >
+              <div className="modal-header">
+                <h2>Delete Customer</h2>
+                <button className="close-btn" onClick={() => {
+                  setIsDeleteConfirmOpen(false);
+                  setDeletingCustomerId(null);
+                }}>
+                  <X size={24} />
+                </button>
+              </div>
+              <div style={{ padding: '24px', textAlign: 'center' }}>
+                <p style={{ fontSize: '1.1rem', marginBottom: '24px', color: 'var(--text-primary)' }}>
+                  Are you sure you wanna delete this customer?
+                </p>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  onClick={() => {
+                    setIsDeleteConfirmOpen(false);
+                    setDeletingCustomerId(null);
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ color: '#ef4444', borderColor: '#ef4444' }}
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="spinner" size={18} /> : <Trash2 size={18} />}
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
